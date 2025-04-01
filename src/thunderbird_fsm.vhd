@@ -82,27 +82,52 @@
 --|
 --+----------------------------------------------------------------------------
 library ieee;
-  use ieee.std_logic_1164.all;
-  use ieee.numeric_std.all;
- 
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
 entity thunderbird_fsm is 
---  port(
-	
---  );
+  port(
+	i_clk, i_reset : in std_logic;
+	i_left, i_right: in std_logic;
+	o_lights_L     : out std_logic_vector(2 downto 0); -- LA -> 0, LC -> 2
+	o_lights_R     : out std_logic_vector(2 downto 0)  -- RA -> 0, RC -> 2
+  );
 end thunderbird_fsm;
 
 architecture thunderbird_fsm_arch of thunderbird_fsm is 
-
--- CONSTANTS ------------------------------------------------------------------
-  
+  -- Constants and state signals
+  signal state : std_logic_vector(7 downto 0) := "10000000";
+  signal Nstate : std_logic_vector(7 downto 0) := "10000000";
 begin
 
-	-- CONCURRENT STATEMENTS --------------------------------------------------------	
-	
-    ---------------------------------------------------------------------------------
-	
-	-- PROCESSES --------------------------------------------------------------------
-    
-	-----------------------------------------------------					   
-				  
+  -- Next state logic
+  Nstate(0) <= state(1);
+  Nstate(1) <= state(2);
+  Nstate(2) <= state(7) AND i_left AND (NOT i_right);
+  Nstate(3) <= state(4);
+  Nstate(4) <= state(5);
+  Nstate(5) <= state(7) AND (NOT i_left) AND i_right;
+  Nstate(6) <= state(7) AND i_left AND i_right;
+  Nstate(7) <= (state(7) AND (NOT i_left) AND (NOT i_right)) OR state(6) OR state(3) OR state(0);
+
+  -- Output logic
+  o_lights_R(0) <= state(6) OR state(5) OR state(4) OR state(3);
+  o_lights_R(1) <= state(6) OR state(4) OR state(3);
+  o_lights_R(2) <= state(6) OR state(3);
+  o_lights_L(0) <= state(6) OR state(2) OR state(1) OR state(0);
+  o_lights_L(1) <= state(6) OR state(1) OR state(0);
+  o_lights_L(2) <= state(6) OR state(0);
+
+  -- State register update
+  register_proc : process (i_clk, i_reset)
+  begin
+    if (rising_edge(i_clk)) then
+      if i_reset = '1' then
+        state <= "10000000";
+      else
+        state <= Nstate;
+      end if;
+    end if;
+  end process register_proc;
+
 end thunderbird_fsm_arch;
